@@ -112,14 +112,39 @@ else
     echo "✓ Systemd service file exists"
 fi
 
-# Step 6: Restart the service
+# Step 6: Ensure Ollama is running
 echo ""
-echo "Step 6: Restarting TriageBot service..."
+echo "Step 6: Checking Ollama service..."
+if ! systemctl is-active --quiet ollama; then
+    echo "Starting Ollama service..."
+    systemctl start ollama
+
+    # Wait for Ollama to be ready
+    echo "Waiting for Ollama to start..."
+    for i in {1..30}; do
+        if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+            echo "✓ Ollama is ready"
+            break
+        fi
+        sleep 1
+    done
+
+    # Pull tinyllama model
+    echo "Pulling tinyllama model..."
+    export HOME=/root
+    /usr/local/bin/ollama pull tinyllama || echo "WARNING: Model pull failed"
+else
+    echo "✓ Ollama service is running"
+fi
+
+# Step 7: Restart the service
+echo ""
+echo "Step 7: Restarting TriageBot service..."
 systemctl restart triagebot
 
-# Step 7: Wait and verify
+# Step 8: Wait and verify
 echo ""
-echo "Step 7: Verifying service is running..."
+echo "Step 8: Verifying service is running..."
 sleep 3
 
 SERVICE_STATUS=$(systemctl is-active triagebot || echo "inactive")
@@ -131,9 +156,9 @@ if [ "$SERVICE_STATUS" != "active" ]; then
 fi
 echo "✓ Service is running"
 
-# Step 8: Health check
+# Step 9: Health check
 echo ""
-echo "Step 8: Checking application health..."
+echo "Step 9: Checking application health..."
 for i in {1..10}; do
     if curl -s http://localhost:8000/ > /dev/null 2>&1; then
         echo "✓ Application is responding"

@@ -129,7 +129,8 @@ done
 echo "Pulling default Ollama model..."
 OLLAMA_MODEL="$${OLLAMA_MODEL:-tinyllama}"
 echo "Model to pull: $OLLAMA_MODEL"
-sudo -u ollama /usr/bin/ollama pull "$OLLAMA_MODEL" || echo "WARNING: Model pull failed. You may need to pull manually."
+export HOME=/root
+/usr/local/bin/ollama pull "$OLLAMA_MODEL" || echo "WARNING: Model pull failed. You may need to pull manually."
 
 # Create systemd service for FastAPI app
 echo "Configuring FastAPI service..."
