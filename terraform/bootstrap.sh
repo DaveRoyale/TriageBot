@@ -50,17 +50,36 @@ else
 fi
 
 # Create Python virtual environment
+# IMPORTANT: Use explicit Python version (3.11) to avoid mismatches with system default
 echo "Creating Python virtual environment..."
 python3.11 -m venv /opt/triagebot/venv
-source /opt/triagebot/venv/bin/activate
 
-# Install Python dependencies
+# Verify venv executables exist - venv creation sometimes fails silently
+if [ ! -f /opt/triagebot/venv/bin/python ] || [ ! -f /opt/triagebot/venv/bin/pip ]; then
+    echo "ERROR: Virtual environment creation failed - executables not found"
+    ls -la /opt/triagebot/venv/bin/ 2>&1 || echo "venv/bin directory does not exist"
+    exit 1
+fi
+
+# Install Python dependencies using full paths to venv executables
+# IMPORTANT: Don't use 'source activate' in multi-step scripts - use absolute paths instead
 echo "Installing Python dependencies..."
 if [ -f /opt/triagebot/requirements.txt ]; then
-    pip install --upgrade pip
-    pip install -r /opt/triagebot/requirements.txt
+    # Upgrade pip/setuptools/wheel first
+    /opt/triagebot/venv/bin/pip install --upgrade pip setuptools wheel
+    # Install application dependencies with absolute path to pip
+    /opt/triagebot/venv/bin/pip install -r /opt/triagebot/requirements.txt
+
+    # Verify critical packages were installed
+    if /opt/triagebot/venv/bin/pip show fastapi > /dev/null; then
+        echo "Dependencies installed successfully"
+    else
+        echo "ERROR: Failed to install dependencies"
+        exit 1
+    fi
 else
-    echo "WARNING: requirements.txt not found"
+    echo "ERROR: requirements.txt not found at /opt/triagebot/requirements.txt"
+    exit 1
 fi
 
 # Create systemd service for Ollama
@@ -117,12 +136,12 @@ echo "Configuring FastAPI service..."
 cat > /etc/systemd/system/triagebot.service << 'EOF'
 [Unit]
 Description=TriageBot FastAPI Application
-After=network-online.target ollama.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=www-data
+User=root
 WorkingDirectory=/opt/triagebot
 Environment="PATH=/opt/triagebot/venv/bin"
 Environment="PYTHONUNBUFFERED=1"
@@ -136,23 +155,16 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-# Create www-data user if needed and set permissions
-if ! id -u www-data > /dev/null 2>&1; then
-    useradd -r -s /bin/false www-data
-fi
-
-chown -R www-data:www-data /opt/triagebot
-
 # Start FastAPI service
 echo "Starting FastAPI application..."
 systemctl daemon-reload
 systemctl enable triagebot
 systemctl start triagebot
 
-# Wait for app to be ready
+# Wait for app to be ready (check root endpoint - /health not implemented)
 echo "Waiting for application to start..."
 for i in {1..30}; do
-    if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+    if curl -s http://localhost:8000/ > /dev/null 2>&1; then
         echo "Application is ready!"
         break
     fi
