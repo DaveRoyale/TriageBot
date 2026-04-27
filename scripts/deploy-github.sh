@@ -33,23 +33,23 @@ echo ""
 echo "Executing deployment commands on instance..."
 COMMAND_ID=$(aws ssm send-command \
   --document-name "AWS-RunShellScript" \
-  --parameters 'commands=[
-    "echo \"Pulling latest code from GitHub...\"",
-    "cd /tmp && rm -rf triagebot-repo",
-    "git clone '"$GITHUB_REPO"' triagebot-repo",
-    "cd triagebot-repo",
-    "echo \"Copying application files...\"",
-    "cp -r app '"$APP_DIR"/"'",
-    "cp requirements.txt '"$APP_DIR"/"'",
-    "echo \"Installing/updating dependencies...\"",
-    "'"$APP_DIR"'/venv/bin/pip install -r '"$APP_DIR"'/requirements.txt",
-    "echo \"Restarting application service...\"",
-    "systemctl restart triagebot",
-    "sleep 2",
-    "systemctl status triagebot --no-pager | head -10",
-    "echo \"Testing application...\"",
-    "curl -s http://localhost:8000/ | head -5"
-  ]' \
+  --parameters "commands=[
+    \"echo 'Pulling latest code from GitHub...'\",
+    \"cd /tmp && rm -rf triagebot-repo\",
+    \"git clone $GITHUB_REPO triagebot-repo\",
+    \"cd triagebot-repo\",
+    \"echo 'Copying application files...'\",
+    \"cp -r app $APP_DIR/\",
+    \"cp requirements.txt $APP_DIR/\",
+    \"echo 'Installing/updating dependencies...'\",
+    \"$APP_DIR/venv/bin/pip install -r $APP_DIR/requirements.txt\",
+    \"echo 'Restarting application service...'\",
+    \"systemctl restart triagebot\",
+    \"sleep 2\",
+    \"systemctl status triagebot --no-pager | head -10\",
+    \"echo 'Testing application...'\",
+    \"curl -s http://localhost:8000/ | head -5\"
+  ]" \
   --instance-ids "$INSTANCE_ID" \
   --region "$REGION" \
   --query "Command.CommandId" \
